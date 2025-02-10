@@ -205,6 +205,16 @@ public class PlayerWindow : Window
             X = Pos.Center(),
             IsDefault = true
         };
+        btnLogin.Accepting += (s,e) => { 
+            var n = MessageBox.Query("Quit Demo", "Are you sure you want to quit this demo?", "Yes", "No");
+            if (n == 0) {
+                Application.RequestStop();
+            }
+            else
+            {
+                MessageBox.ErrorQuery("Hi", "you got ther wrong one", "return");
+            }
+        };
 
 
         // Add the views to the Window
