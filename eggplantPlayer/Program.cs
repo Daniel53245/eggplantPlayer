@@ -3,49 +3,53 @@ using System.IO;
 using System.CommandLine;
 using WMPLib;
 using Terminal.Gui;
+using System.Security.AccessControl;
+using System.Runtime.InteropServices;
+using EggplantPlayer;
+using System.CommandLine.Parsing;
 
+namespace EggplantPlayer
+{
 class MusicPlayerCLI
 {
-    static WindowsMediaPlayer player = new WindowsMediaPlayer();
-    static string currentSong = "None";
-    static bool isPlaying = false;
 
-    static void Main(string[] args)
+
+    public static void Main(string[] args)
     {
-       
-        // Create root command
-        var rootCommand = new RootCommand("🎵 CLI Music Player with System.CommandLine");
 
-        // Play command
-        var playCommand = new System.CommandLine.Command("play", "Play a music file");
-        var filePath = new Argument<string>("filepath", "Path to the music file");        
-        rootCommand.AddCommand(playCommand);
-        playCommand.AddArgument(filePath);
-        playCommand.SetHandler((filePath) =>
-        {
-            PlayMusic(filePath);
-        },filePath);
-        
+        //// Create root command
+        //var rootCommand = new RootCommand("🎵 CLI Music Player with System.CommandLine");
 
-        // Pause command
-        var pauseCommand = new System.CommandLine.Command("pause", "Pause the currently playing song");
-        pauseCommand.SetHandler(PauseMusic);
-        rootCommand.AddCommand(pauseCommand);
+        //// Play command
+        //var playCommand = new System.CommandLine.Command("play", "Play a music file");
+        //var filePath = new Argument<string>("filepath", "Path to the music file");        
+        //rootCommand.AddCommand(playCommand);
+        //playCommand.AddArgument(filePath);
+        //playCommand.SetHandler((filePath) =>
+        //{
+        //    PlayMusic(filePath);
+        //},filePath);
 
-        // Resume command
-        var resumeCommand = new System.CommandLine.Command("resume", "Resume the paused song");
-        resumeCommand.SetHandler(ResumeMusic);
-        rootCommand.AddCommand(resumeCommand);
 
-        // Stop command
-        var stopCommand = new System.CommandLine.Command("stop", "Stop the currently playing song");
-        stopCommand.SetHandler(StopMusic);
-        rootCommand.AddCommand(stopCommand);
+        //// Pause command
+        //var pauseCommand = new System.CommandLine.Command("pause", "Pause the currently playing song");
+        //pauseCommand. (PauseMusic);
+        //rootCommand.AddCommand(pauseCommand);
 
-        // Show status command
-        var statusCommand = new System.CommandLine.Command("status", "Show the currently playing song");
-        statusCommand.SetHandler(ShowStatus);
-        rootCommand.AddCommand(statusCommand);
+        //// Resume command
+        //var resumeCommand = new System.CommandLine.Command("resume", "Resume the paused song");
+        //resumeCommand.SetHandler(ResumeMusic);
+        //rootCommand.AddCommand(resumeCommand);
+
+        //// Stop command
+        //var stopCommand = new System.CommandLine.Command("stop", "Stop the currently playing song");
+        //stopCommand.SetHandler(StopMusic);
+        //rootCommand.AddCommand(stopCommand);
+
+        //// Show status command
+        //var statusCommand = new System.CommandLine.Command("status", "Show the currently playing song");
+        //statusCommand.SetHandler(ShowStatus);
+        //rootCommand.AddCommand(statusCommand);
 
         // Override the default configuration for the application to use the Light theme
 
@@ -57,30 +61,58 @@ class MusicPlayerCLI
         // To see this output on the screen it must be done after shutdown,
         // which restores the previous screen.
         Console.WriteLine($@"Username: {PlayerWindow.UserName}");
-
-        //// Main Loop
-        //while (true)
-        //{
-        //    Console.Write("\nCommand> ");
-        //    string? input = Console.ReadLine()?.Trim();
-
-        //    if (string.IsNullOrEmpty(input))
-        //        continue; // Ignore empty input
-
-        //    if (input.ToLower() == "exit")
-        //    {
-        //        Console.WriteLine("👋 Exiting music player...");
-        //        return; // Exits the loop
-        //    }
-
-        //    string[] commandArgs = input.Split(' '); // Split input into command + arguments
-        //    rootCommand.InvokeAsync(commandArgs).Wait(); // Run the command
-        //}
     }
 
 
 
-    static Task PlayMusic(string filepath)
+
+
+
+
+
+
+
+
+}
+
+public class CommandTextView : TextView
+{
+    public Action<string> OnCommandEntered;
+
+    protected override bool OnKeyDown(Key keyEvent)
+    {
+        if (keyEvent == Key.Enter)
+        {
+            string command = this.Text.ToString().Trim(); // Get input
+            if (!string.IsNullOrWhiteSpace(command))
+            {
+                OnCommandEntered?.Invoke(command); // Trigger command execution
+            }
+
+            this.Text = string.Empty; // Clear input after execution
+            return true; // Mark event as handled
+                            //Process Command here 
+        }
+        else
+        {
+            return base.OnKeyDown(keyEvent);
+        }
+    }
+
+}
+
+public class PlayerWindow : Window
+{
+    public static string UserName;
+
+    WindowsMediaPlayer player;
+    string currentSong = "None";
+    bool isPlaying = false;
+
+    private TextView infoDisplay;
+    private CommandParser commandParser;
+
+    public Task PlayMusic(string filepath)
     {
         if (!File.Exists(filepath))
         {
@@ -91,23 +123,23 @@ class MusicPlayerCLI
         }
 
         StopMusic();
-        player.URL = filepath;
-        player.controls.play();
-        currentSong = Path.GetFileName(filepath);
-        isPlaying = true;
+        this.player.URL = filepath;
+        this.player.controls.play();
+        this.currentSong = Path.GetFileName(filepath);
+        this.isPlaying = true;
 
         Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine($"🎵 Now Playing: {currentSong}");
+        Console.WriteLine($"🎵 Now Playing: {this.currentSong}");
         Console.ResetColor();
         return Task.CompletedTask;
     }
 
-    static void PauseMusic()
+    public void PauseMusic()
     {
-        if (isPlaying)
+        if (this.isPlaying)
         {
-            player.controls.pause();
-            isPlaying = false;
+            this.player.controls.pause();
+            this.isPlaying = false;
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("⏸️ Music Paused.");
             Console.ResetColor();
@@ -118,12 +150,12 @@ class MusicPlayerCLI
         }
     }
 
-    static void ResumeMusic()
+    public void ResumeMusic()
     {
-        if (!isPlaying && currentSong != "None")
+        if (!this.isPlaying && this.currentSong != "None")
         {
-            player.controls.play();
-            isPlaying = true;
+            this.player.controls.play();
+            this.isPlaying = true;
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("▶️ Music Resumed.");
             Console.ResetColor();
@@ -134,12 +166,12 @@ class MusicPlayerCLI
         }
     }
 
-    static void StopMusic()
+    public void StopMusic()
     {
-        if (currentSong != "None")
+        if (this.currentSong != "None")
         {
-            player.controls.stop();
-            isPlaying = false;
+            this.player.controls.stop();
+            this.isPlaying = false;
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("🛑 Music Stopped.");
             Console.ResetColor();
@@ -151,73 +183,104 @@ class MusicPlayerCLI
         }
     }
 
-    static void ShowStatus()
+    public void ShowStatus()
     {
-        Console.WriteLine($"🎵 Now Playing: {currentSong}");
-        Console.WriteLine($"📌 Status: {(isPlaying ? "Playing" : "Paused/Stopped")}");
+        Console.WriteLine($"🎵 Now Playing: {this.currentSong}");
+        Console.WriteLine($"📌 Status: {(this.isPlaying ? "Playing" : "Paused/Stopped")}");
     }
-}
 
-public class PlayerWindow : Window
-{
-    public static string UserName;
+    private void ProcessCommand(string command, string arugment)
+    {
+        switch (command.ToLower())
+        {
+            case "play":
+                PlayMusic(arugment);
+                UpdateInfoPanel("🎵 Now Playing: example.mp3");
+                break;
+
+            case "pause":
+                PauseMusic();
+                UpdateInfoPanel("⏸️ Music Paused.");
+                break;
+
+            case "resume":
+                ResumeMusic();
+                UpdateInfoPanel("▶️ Music Resumed.");
+                break;
+
+            case "stop":
+                StopMusic();
+                UpdateInfoPanel("🛑 Music Stopped.");
+                break;
+
+            case "status":
+                UpdateInfoPanel($"🎵 Now Playing: {currentSong}\n📌 Status: {(isPlaying ? "Playing" : "Paused/Stopped")}");
+                break;
+
+            case "exit":
+                Application.RequestStop();
+                break;
+
+            default:
+                UpdateInfoPanel($"⚠️ Unknown command: {command}");
+                break;
+        }
+    }
+
+    private void UpdateInfoPanel(string newText)
+    {
+        Application.Invoke(() => { infoDisplay.Text = newText; });
+    }
+
 
     public PlayerWindow()
     {
-        Title = $"Example App ({Application.QuitKey} to quit)";
+        this.player = new WindowsMediaPlayer();
+        this.commandParser = new CommandParser();
 
-        // Create input components and labels
-        var usernameLabel = new Label { Text = "Username:" };
-
-        var userNameText = new TextField
+        Title = $"EggplantPlayer ({Application.QuitKey} to quit)";
+        
+        // Component Construction>>>
+        var leftPanel = new FrameView()
         {
-            // Position text field adjacent to the label
-            X = Pos.Right(usernameLabel) + 1,
+            X = 0,
+            Y = 0,
+            Width = Dim.Percent(50),
+            Height = Dim.Fill(),
 
-            // Fill remaining horizontal space
-            Width = Dim.Fill()
         };
-
-        var passwordLabel = new Label
+        var infoDisplay = new TextView()
         {
-            Text = "Password:",
-            X = Pos.Left(usernameLabel),
-            Y = Pos.Bottom(usernameLabel) + 1
+            X = 2,
+            Y = 1,
+            ReadOnly = true,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            Text = "Welcome to EggplatPlayer\n\nMore Details here"
         };
+        this.infoDisplay = infoDisplay;
+        leftPanel.Add(infoDisplay);
 
-        var passwordText = new TextField
+        var rightPanel = new FrameView()
         {
-            Secret = true,
-
-            // align with the text box above
-            X = Pos.Left(userNameText),
-            Y = Pos.Top(passwordLabel),
-            Width = Dim.Fill()
+            X = Pos.Right(leftPanel),
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
         };
-
-        // Create login button
-        var btnLogin = new Button
+        //>>>
+        var commmandField = new CommandTextView()
         {
-            Text = "Login",
-            Y = Pos.Bottom(passwordLabel) + 1,
-
-            // center the login button horizontally
-            X = Pos.Center(),
-            IsDefault = true
+            X = 1,
+            Y = 1,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
         };
-        btnLogin.Accepting += (s,e) => { 
-            var n = MessageBox.Query("Quit Demo", "Are you sure you want to quit this demo?", "Yes", "No");
-            if (n == 0) {
-                Application.RequestStop();
-            }
-            else
-            {
-                MessageBox.ErrorQuery("Hi", "you got ther wrong one", "return");
-            }
-        };
+        commmandField.OnCommandEntered = commandParser.Parse;
+        commandParser.OnCommandParsed = ProcessCommand;
+        rightPanel.Add(commmandField);
+        Add(leftPanel, rightPanel);
 
-
-        // Add the views to the Window
-        Add(usernameLabel, userNameText, passwordLabel, passwordText, btnLogin);
     }
+}
 }
