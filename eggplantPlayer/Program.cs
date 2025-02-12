@@ -7,99 +7,22 @@ using System.Security.AccessControl;
 using System.Runtime.InteropServices;
 using EggplantPlayer;
 using System.CommandLine.Parsing;
+using eggplantPlayer;
+using System.Runtime.CompilerServices;
 
 namespace EggplantPlayer
 {
 class MusicPlayerCLI
 {
-
-
     public static void Main(string[] args)
     {
-
-        //// Create root command
-        //var rootCommand = new RootCommand("🎵 CLI Music Player with System.CommandLine");
-
-        //// Play command
-        //var playCommand = new System.CommandLine.Command("play", "Play a music file");
-        //var filePath = new Argument<string>("filepath", "Path to the music file");        
-        //rootCommand.AddCommand(playCommand);
-        //playCommand.AddArgument(filePath);
-        //playCommand.SetHandler((filePath) =>
-        //{
-        //    PlayMusic(filePath);
-        //},filePath);
-
-
-        //// Pause command
-        //var pauseCommand = new System.CommandLine.Command("pause", "Pause the currently playing song");
-        //pauseCommand. (PauseMusic);
-        //rootCommand.AddCommand(pauseCommand);
-
-        //// Resume command
-        //var resumeCommand = new System.CommandLine.Command("resume", "Resume the paused song");
-        //resumeCommand.SetHandler(ResumeMusic);
-        //rootCommand.AddCommand(resumeCommand);
-
-        //// Stop command
-        //var stopCommand = new System.CommandLine.Command("stop", "Stop the currently playing song");
-        //stopCommand.SetHandler(StopMusic);
-        //rootCommand.AddCommand(stopCommand);
-
-        //// Show status command
-        //var statusCommand = new System.CommandLine.Command("status", "Show the currently playing song");
-        //statusCommand.SetHandler(ShowStatus);
-        //rootCommand.AddCommand(statusCommand);
-
-        // Override the default configuration for the application to use the Light theme
-
         Application.Run<PlayerWindow>().Dispose();
-
-        // Before the application exits, reset Terminal.Gui for clean shutdown
         Application.Shutdown();
-
-        // To see this output on the screen it must be done after shutdown,
-        // which restores the previous screen.
         Console.WriteLine($@"Username: {PlayerWindow.UserName}");
     }
 
-
-
-
-
-
-
-
-
-
-
 }
 
-public class CommandTextView : TextView
-{
-    public Action<string> OnCommandEntered;
-
-    protected override bool OnKeyDown(Key keyEvent)
-    {
-        if (keyEvent == Key.Enter)
-        {
-            string command = this.Text.ToString().Trim(); // Get input
-            if (!string.IsNullOrWhiteSpace(command))
-            {
-                OnCommandEntered?.Invoke(command); // Trigger command execution
-            }
-
-            this.Text = string.Empty; // Clear input after execution
-            return true; // Mark event as handled
-                            //Process Command here 
-        }
-        else
-        {
-            return base.OnKeyDown(keyEvent);
-        }
-    }
-
-}
 
 public class PlayerWindow : Window
 {
@@ -109,8 +32,12 @@ public class PlayerWindow : Window
     string currentSong = "None";
     bool isPlaying = false;
 
+    
+
     private TextView infoDisplay;
+    private TextView animationDisplay;
     private CommandParser commandParser;
+    private Animation currentAnimation;
 
     public Task PlayMusic(string filepath)
     {
@@ -232,11 +159,51 @@ public class PlayerWindow : Window
         Application.Invoke(() => { infoDisplay.Text = newText; });
     }
 
-
-    public PlayerWindow()
+    private string CenterAscii(string asciiFrame)
     {
+        if (animationDisplay == null) return asciiFrame; // Safety check
+
+        int displayWidth = animationDisplay.Frame.Width;  // Available width
+        int displayHeight = animationDisplay.Frame.Height; // Available height
+
+        string[] lines = asciiFrame.Split('\n');
+        int asciiWidth = lines.Max(line => line.Length); // Longest line width
+        int asciiHeight = lines.Length; // Number of lines
+
+        // Calculate horizontal padding
+        int leftPadding = Math.Max(0, (displayWidth - asciiWidth) / 2);
+
+        // Calculate vertical padding
+        int topPadding = Math.Max(0, (displayHeight - asciiHeight) / 2);
+
+        // Apply horizontal padding (spaces)
+        string paddedAscii = string.Join("\n", lines.Select(line => new string(' ', leftPadding) + line));
+
+        // Apply vertical padding (new lines)
+        string verticalPadding = new string('\n', topPadding);
+        return verticalPadding + paddedAscii;
+    }
+
+    private void StartAsciiAnimation()
+    {
+        Task.Run(async () =>
+        {
+            while (true)
+            {
+                string frame = currentAnimation.NextFrame();
+                string centeredFrame = CenterAscii(frame);
+                Application.Invoke(() => { this.animationDisplay.Text = centeredFrame; });
+
+                await Task.Delay(currentAnimation.GetFrameDelay());
+            }
+        });
+    }
+
+    public PlayerWindow(){
         this.player = new WindowsMediaPlayer();
         this.commandParser = new CommandParser();
+        this.currentAnimation = new Animation(AnimationSequences.LoadingBar);
+        this.ColorScheme = CustomColorSchemes.BlackAndWhite;
 
         Title = $"EggplantPlayer ({Application.QuitKey} to quit)";
         
@@ -249,17 +216,30 @@ public class PlayerWindow : Window
             Height = Dim.Fill(),
 
         };
+
         var infoDisplay = new TextView()
         {
-            X = 2,
-            Y = 1,
+            X = 0,
+            Y = 0,
             ReadOnly = true,
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
+            Height = Dim.Percent(50),
             Text = "Welcome to EggplatPlayer\n\nMore Details here"
         };
-        this.infoDisplay = infoDisplay;
         leftPanel.Add(infoDisplay);
+        
+        var animationDisplay = new TextView()
+        {
+            X= 0,
+            Y = Pos.Bottom(infoDisplay),
+            ReadOnly = true,
+            Width= Dim.Fill(),
+            Height = Dim.Percent(50),
+            Text = $"Animations Here"
+        };
+        this.animationDisplay = animationDisplay;
+        leftPanel.Add(animationDisplay);
+        this.infoDisplay = infoDisplay;
 
         var rightPanel = new FrameView()
         {
@@ -279,6 +259,7 @@ public class PlayerWindow : Window
         commmandField.OnCommandEntered = commandParser.Parse;
         commandParser.OnCommandParsed = ProcessCommand;
         rightPanel.Add(commmandField);
+        StartAsciiAnimation();
         Add(leftPanel, rightPanel);
 
     }
